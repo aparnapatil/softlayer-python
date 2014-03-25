@@ -17,7 +17,6 @@ Compute:
   sshkey    Manage SSH keys on your account
 
 Networking:
-  cdn        Content Delivery Network service management
   dns        Domain Name System
   firewall   Firewall rule and security management
   globalip   Global IP address management
@@ -33,7 +32,6 @@ Storage:
 
 General:
   config    View and edit configuration for this tool
-  ticket    Manage account tickets
   summary   Display an overall summary of your account
   help      Show help
 
@@ -51,7 +49,7 @@ from docopt import docopt, DocoptExit
 
 from SoftLayer import Client, TimedClient, SoftLayerError, SoftLayerAPIError
 from SoftLayer.consts import VERSION
-from .helpers import CLIAbort, ArgumentError, format_output, KeyValueTable
+from .helpers import CLIAbort, ArgumentError, InvalidInput, format_output, KeyValueTable
 from .environment import Environment, InvalidCommand, InvalidModule
 
 
@@ -66,25 +64,18 @@ VALID_FORMATS = ['raw', 'table', 'json']
 
 
 class CommandParser(object):
-    """ Helper class to parse commands
-
-    :param env: Environment instance
-    """
     def __init__(self, env):
         self.env = env
 
     def get_main_help(self):
-        """ Get main help text """
         return __doc__.strip()
 
     def get_module_help(self, module_name):
-        """ Get help text for a module """
         module = self.env.load_module(module_name)
         arg_doc = module.__doc__
         return arg_doc.strip()
 
     def get_command_help(self, module_name, command_name):
-        """ Get help text for a specific command """
         command = self.env.get_command(module_name, command_name)
 
         default_format = 'raw'
@@ -102,18 +93,16 @@ Prompt Options:
         if '[options]' in arg_doc:
             arg_doc += """
 Standard Options:
-  --format=ARG            Output format. [Options: table, raw] [Default: %s]
-  -C FILE --config=FILE   Config file location. [Default: ~/.softlayer]
-  --debug=LEVEL           Specifies the debug noise level
+  --format=ARG           Output format. [Options: table, raw] [Default: %s]
+  -C FILE --config=FILE  Config file location. [Default: ~/.softlayer]
+  --debug=LEVEL          Specifies the debug noise level
                            1=warn, 2=info, 3=debug
-  --timings               Time each API call and display after results
-  --proxy=PROTO:PROXY_URL HTTP[s] proxy to be use to make API calls
-  -h --help               Show this screen
+  --timings              Time each API call and display after results
+  -h --help              Show this screen
 """ % default_format
         return arg_doc.strip()
 
     def parse_main_args(self, args):
-        """ Parse root arguments """
         main_help = self.get_main_help()
         arguments = docopt(
             main_help,
@@ -124,7 +113,6 @@ Standard Options:
         return arguments
 
     def parse_module_args(self, module_name, args):
-        """ Parse module arguments """
         arg_doc = self.get_module_help(module_name)
         arguments = docopt(
             arg_doc,
@@ -134,14 +122,12 @@ Standard Options:
         return arguments
 
     def parse_command_args(self, module_name, command_name, args):
-        """ Parse command arguments """
         command = self.env.get_command(module_name, command_name)
         arg_doc = self.get_command_help(module_name, command_name)
         arguments = docopt(arg_doc, version=VERSION, argv=[module_name] + args)
         return command, arguments
 
     def parse(self, args):
-        """ Parse entire tree of arguments """
         # handle `sl ...`
         main_args = self.parse_main_args(args)
         module_name = main_args['<module>']
@@ -173,18 +159,14 @@ def main(args=sys.argv[1:], env=Environment()):
         debug_level = command_args.get('--debug')
         if debug_level:
             logger = logging.getLogger()
-            handler = logging.StreamHandler()
-            logger.addHandler(handler)
+            h = logging.StreamHandler()
+            logger.addHandler(h)
             logger.setLevel(DEBUG_LOGGING_MAP.get(debug_level, logging.DEBUG))
 
-        kwargs = {
-            'proxy': command_args.get('--proxy'),
-            'config_file': command_args.get('--config')
-        }
         if command_args.get('--timings'):
-            client = TimedClient(**kwargs)
+            client = TimedClient(config_file=command_args.get('--config'))
         else:
-            client = Client(**kwargs)
+            client = Client(config_file=command_args.get('--config'))
 
         # Do the thing
         runnable = command(client=client, env=env)
@@ -193,56 +175,56 @@ def main(args=sys.argv[1:], env=Environment()):
             out_format = command_args.get('--format', 'table')
             if out_format not in VALID_FORMATS:
                 raise ArgumentError('Invalid format "%s"' % out_format)
-            output = format_output(data, fmt=out_format)
-            if output:
-                env.out(output)
+            s = format_output(data, fmt=out_format)
+            if s:
+                env.out(s)
 
         if command_args.get('--timings'):
             out_format = command_args.get('--format', 'table')
             api_calls = client.get_last_calls()
-            timing_table = KeyValueTable(['call', 'time'])
+            t = KeyValueTable(['call', 'time'])
 
             for call, _, duration in api_calls:
-                timing_table.add_row([call, duration])
+                t.add_row([call, duration])
 
-            env.err(format_output(timing_table, fmt=out_format))
+            env.err(format_output(t, fmt=out_format))
 
-    except InvalidCommand as ex:
-        env.err(resolver.get_module_help(ex.module_name))
-        if ex.command_name:
+    except InvalidCommand as e:
+        env.err(resolver.get_module_help(e.module_name))
+        if e.command_name:
             env.err('')
-            env.err(str(ex))
+            env.err(str(e))
             exit_status = 1
-    except InvalidModule as ex:
+    except InvalidModule as e:
         env.err(resolver.get_main_help())
-        if ex.module_name:
+        if e.module_name:
             env.err('')
-            env.err(str(ex))
+            env.err(str(e))
         exit_status = 1
-    except DocoptExit as ex:
-        env.err(ex.usage)
+    except DocoptExit as e:
+        env.err(e.usage)
         env.err(
             '\nUnknown argument(s), use -h or --help for available options')
         exit_status = 127
     except KeyboardInterrupt:
         env.out('')
         exit_status = 1
-    except CLIAbort as ex:
-        env.err(str(ex.message))
-        exit_status = ex.code
-    except SystemExit as ex:
-        exit_status = ex.code
-    except SoftLayerAPIError as ex:
-        if 'invalid api token' in ex.faultString.lower():
+    except CLIAbort as e:
+        env.err(str(e.message))
+        exit_status = e.code
+    except SystemExit as e:
+        exit_status = e.code
+    except SoftLayerAPIError as e:
+        if 'invalid api token' in e.faultString.lower():
             env.out("Authentication Failed: To update your credentials, use "
                     "'sl config setup'")
         else:
-            env.err(str(ex))
+            env.err(str(e))
             exit_status = 1
-    except SoftLayerError as ex:
-        env.err(str(ex))
+    except SoftLayerError as e:
+        env.err(str(e))
         exit_status = 1
-    except Exception:
+    except Exception as e:
         import traceback
         env.err(traceback.format_exc())
         exit_status = 1

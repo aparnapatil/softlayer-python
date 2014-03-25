@@ -8,7 +8,7 @@
 
 from SoftLayer.utils import NestedDict
 from SoftLayer.CLI.environment import CLIRunnable
-from .exceptions import CLIHalt, CLIAbort, ArgumentError
+from .exceptions import CLIHalt, CLIAbort, ArgumentError, InvalidInput
 from .formatting import (
     Table, KeyValueTable, FormattedItem, SequentialOutput, confirm,
     no_going_back, mb_to_gb, gb, listing, blank, format_output,
@@ -19,7 +19,7 @@ __all__ = [
     # Core/Misc
     'CLIRunnable', 'NestedDict', 'FALSE_VALUES', 'resolve_id',
     # Exceptions
-    'CLIAbort', 'CLIHalt', 'ArgumentError',
+    'CLIAbort', 'CLIHalt', 'ArgumentError', 'InvalidInput',
     # Formatting
     'Table', 'KeyValueTable', 'FormattedItem', 'SequentialOutput',
     'valid_response', 'confirm', 'no_going_back', 'mb_to_gb', 'gb',
