@@ -2,7 +2,7 @@ import socket
 from SoftLayer.utils import NestedDict, query_filter, IdentifierMixin
 
 
-class iSCSIManager(IdentifierMixin, object):
+class ISCSIManager(IdentifierMixin, object):
 
     """
     Manages iSCSI storages.
@@ -14,11 +14,11 @@ class iSCSIManager(IdentifierMixin, object):
         self.configuration = {}
         self.client = client
         self.iscsi = self.client['Network_Storage_Iscsi']
-        self.product_order = self.client['SoftLayer_Product_Order']
+        self.product_order = self.client['Product_Order']
         self.account = self.client['Account']
 
-    def find_items(self, size):
-        items = []
+    def _find_item_prices(self, size):
+        item_prices = []
         _filter = NestedDict({})
         _filter[
             'itemPrices'][
@@ -31,13 +31,10 @@ class iSCSIManager(IdentifierMixin, object):
             filter=_filter.to_dict())
         iscsi_item_prices = sorted(
             iscsi_item_prices,
-            key=lambda x: float(x.get('recurringFee', 0)))
-        iscsi_item_prices = sorted(
-            iscsi_item_prices,
-            key=lambda x: float(x['item']['capacity']))
+            key=lambda x: (float(x['item']['capacity']),float(x.get('recurringFee', 0))))
         for price in iscsi_item_prices:
-            items.append(price['id'])
-        return items
+            item_prices.append(price['id'])
+        return item_prices
 
     def find_space(self, size):
         _filter = NestedDict({})
@@ -58,28 +55,31 @@ class iSCSIManager(IdentifierMixin, object):
             return None
         return item_prices[0]['id']
 
-    def build_order(self, item, location):
+    def build_order(self, price, dc):
         order = {
             'complexType':
             'SoftLayer_Container_Product_Order_Network_Storage_Iscsi',
-            'location': location,
+            'location': dc,
             'packageId': 0,  # storage package
-            'prices': [{'id': item}],
+            'prices': [{'id': price}],
             'quantity': 1
         }
         return order
+	
 
-    def order_iscsi(self, items, size, location):
+    def order_iscsi(self, **kwargs):
         """Places an order for iSCSI volume
         """
-
-        for item in items:
-            iscsi_order = self.build_order(item, location)
+	size = kwargs.get('size')
+	dc = kwargs.get('dc')
+	item_prices = self._find_item_prices(size)
+        for price in item_prices:
+            iscsi_order = self.build_order(price, dc)
             try:
                 self.product_order.verifyOrder(iscsi_order)
                 order = self.product_order.placeOrder(iscsi_order)
             except Exception as e:
-                continue
+                continue   # if verifyOrder() fails for perticular item-price-id
             return
 
     def get_iscsi(self, volume_id, **kwargs):
@@ -116,7 +116,7 @@ class iSCSIManager(IdentifierMixin, object):
             volume_id,
             mask='mask[id,capacityGb,username,password,billingItem[id]]')
         billingItemId = iscsi['billingItem']['id']
-        self.client['SoftLayer_Billing_Item'].cancelItem(
+        self.client['Billing_Item'].cancelItem(
             immediate,
             True,
             reason,

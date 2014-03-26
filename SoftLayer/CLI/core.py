@@ -49,7 +49,7 @@ from docopt import docopt, DocoptExit
 
 from SoftLayer import Client, TimedClient, SoftLayerError, SoftLayerAPIError
 from SoftLayer.consts import VERSION
-from .helpers import CLIAbort, ArgumentError, InvalidInput, format_output, KeyValueTable
+from .helpers import CLIAbort, ArgumentError, format_output, KeyValueTable
 from .environment import Environment, InvalidCommand, InvalidModule
 
 

@@ -20,10 +20,10 @@ from SoftLayer.CLI import (
     CLIRunnable, Table, no_going_back, confirm, mb_to_gb, listing,
     FormattedItem)
 from SoftLayer.CLI.helpers import (
-    CLIAbort, ArgumentError, InvalidInput, NestedDict, blank, resolve_id, KeyValueTable,
+    CLIAbort, ArgumentError, NestedDict, blank, resolve_id, KeyValueTable,
     update_with_template_args, FALSE_VALUES, export_to_template,
     active_txn, transaction_status)
-from SoftLayer import iSCSIManager
+from SoftLayer import ISCSIManager
 
 
 class ListISCSI(CLIRunnable):
@@ -81,15 +81,15 @@ Required:
     required_params = ['--size', '--dc']
 
     def execute(self, args):
-        iscsi = iSCSIManager(self.client)
+        iscsi = ISCSIManager(self.client)
 
         self._validate_create_args(args)
-
-	size, location = self._parse_create_args(args)
-	location = self._get_location_id(location)
-        items = iscsi.find_items(int(size))
-
-        iscsi.order_iscsi(items, size, location)
+	order = {
+	'size':int(args['--size']),
+	}
+	location = self._get_location_id(args['--dc'])
+	order['dc'] = location
+	iscsi.order_iscsi(**order)
 
     def _validate_create_args(self, args):
 	invalid_args = [k for k in self.required_params if args.get(k) is None]
@@ -110,37 +110,34 @@ Required:
             if dc['name'] == location:
                 self.location = dc['id']
                 return self.location
-	raise InvalidInput('Inavlid datacenter name: %s'
-                                % location)
-
+	raise ArgumentError('Invalid datacenter name: %s'%location)
 
 class CanceliSCSI(CLIRunnable):
 
     """
-usage: sl iscsi [--immediate] [--reason] cancel <identifier> [options]
+usage: sl iscsi cancel <identifier> [options]
 
 Cancel iSCSI Storage
 
 options :
---immediate  Cancels the iSCSI immediately (instead of on the billing
+--immediate    Cancels the iSCSI immediately (instead of on the billing
              anniversary)
---reason     Reason for cancellation
+--reason=REASON    An optional cancellation reason.
 
-Prompt Options:
--y, --really  Confirm all prompt actions
 """
     action = 'cancel'
     options = ['confirm']
 
     def execute(self, args):
-        iscsi = iSCSIManager(self.client)
+        iscsi = ISCSIManager(self.client)
         iscsi_id = resolve_id(
             iscsi.resolve_ids,
             args.get('<identifier>'),
             'iSCSI')
-        immediate = args.get('--immediate', False)
-        reason = args.get('--reason', str('No longer needed'))
 
+        immediate = args.get('--immediate', False)
+
+        reason = args.get('--reason')
         if args['--really'] or no_going_back(iscsi_id):
             iscsi.cancel_iscsi(iscsi_id, reason, immediate)
         else:
@@ -162,7 +159,7 @@ Options:
     action = 'detail'
 
     def execute(self, args):
-        iscsi = iSCSIManager(self.client)
+        iscsi = ISCSIManager(self.client)
         t = KeyValueTable(['Name', 'Value'])
         t.align['Name'] = 'r'
         t.align['Value'] = 'l'
@@ -207,7 +204,7 @@ create an iSCSI snapshot.
     action = 'create_snapshot'
 
     def execute(self, args):
-        iscsi = iSCSIManager(self.client)
+        iscsi = ISCSIManager(self.client)
         iscsi_id = resolve_id(iscsi.resolve_ids,
                               args.get('<identifier>'),
                               'iSCSI')
@@ -229,7 +226,7 @@ Required :
     required_params = ['--capacity']
 
     def execute(self, args):
-        iscsi = iSCSIManager(self.client)
+        iscsi = ISCSIManager(self.client)
 	invalid_args = [k for k in self.required_params if args.get(k) is None]
         if invalid_args:
             raise ArgumentError('Missing required options: %s'
@@ -264,7 +261,7 @@ Delete iSCSI snapshot.
     action = 'delete_snapshot'
 
     def execute(self, args):
-        iscsi = iSCSIManager(self.client)
+        iscsi = ISCSIManager(self.client)
         snapshot_id = resolve_id(
             iscsi.resolve_ids,
             args.get('<identifier>'),
@@ -283,7 +280,7 @@ restores volume from existing snapshot.
     action = 'restore_volume'
 
     def execute(self, args):
-        iscsi = iSCSIManager(self.client)
+        iscsi = ISCSIManager(self.client)
         snapshot_id = resolve_id(
             iscsi.resolve_ids,
             args.get('<identifier>'),
@@ -302,11 +299,10 @@ List iSCSI Snapshots
     action = 'list_snapshots'
 
     def execute(self, args):
-        mgr = iSCSIManager(self.client)
+        mgr = ISCSIManager(self.client)
         iscsi_id = resolve_id(mgr.resolve_ids,args.get('<identifier>'),'iSCSI')
 	iscsi = self.client['Network_Storage_Iscsi']
         snapshots = iscsi.getPartnerships(mask='volumeId,partnerVolumeId,createDate,type', id = iscsi_id)
-	print snapshots
         snapshots = [NestedDict(n) for n in snapshots]
 
         t = Table([

@@ -23,8 +23,3 @@ class ArgumentError(CLIAbort):
     def __init__(self, msg, *args):
         super(ArgumentError, self).__init__(msg, *args)
         self.message = "Argument Error: %s" % msg
-
-class InvalidInput(CLIAbort):
-    def _init_(self, msg, *args):
-	super(InvalidInput, self).__init__(msg, *args)
-	self.message = "InvalidInput: %s" % msg
