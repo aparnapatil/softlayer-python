@@ -1,4 +1,3 @@
-import socket
 from SoftLayer.utils import NestedDict, query_filter, IdentifierMixin
 
 
@@ -20,7 +19,7 @@ class ISCSIManager(IdentifierMixin, object):
     def _find_item_prices(self, size, query):
         item_prices = []
         _filter = NestedDict({})
-	_filter[
+        _filter[
             'itemPrices'][
             'item'][
             'description'] = query_filter(
@@ -31,7 +30,9 @@ class ISCSIManager(IdentifierMixin, object):
             filter=_filter.to_dict())
         iscsi_item_prices = sorted(
             iscsi_item_prices,
-            key=lambda x: (float(x['item']['capacity']),float(x.get('recurringFee', 0))))
+            key=lambda x:
+            (float(x['item']['capacity']),
+                float(x.get('recurringFee', 0))))
         for price in iscsi_item_prices:
             item_prices.append(price['id'])
         return item_prices
@@ -46,14 +47,13 @@ class ISCSIManager(IdentifierMixin, object):
             'quantity': 1
         }
         return order
-	
 
     def order_iscsi(self, **kwargs):
         """Places an order for iSCSI volume
         """
-	size = kwargs.get('size')
-	dc = kwargs.get('dc')
-	item_price = self._find_item_prices(size,'~GB iSCSI SAN Storage')
+        size = kwargs.get('size')
+        dc = kwargs.get('dc')
+        item_price = self._find_item_prices(size, '~GB iSCSI SAN Storage')
         iscsi_order = self.build_order(item_price, dc)
         self.product_order.verifyOrder(iscsi_order)
         self.product_order.placeOrder(iscsi_order)
@@ -75,7 +75,7 @@ class ISCSIManager(IdentifierMixin, object):
                 'nasType',
                 'capacityGb',
                 'snapshotCapacityGb',
-		'mountableFlag',
+                'mountableFlag',
                 'serviceResourceBackendIpAddress',
                 'billingItem',
                 'notes',
@@ -114,15 +114,18 @@ class ISCSIManager(IdentifierMixin, object):
         :param integer volume_id: the volume ID
         :param integer capacity: capacity in ~GB
         """
-        item_price = self._find_item_prices(int(capacity),'~iSCSI SAN Snapshot Space')
-        result = self.get_iscsi(volume_id, mask='mask[id,capacityGb,serviceResource[datacenter]]')
+        item_price = self._find_item_prices(
+            int(capacity), '~iSCSI SAN Snapshot Space')
+        result = self.get_iscsi(
+            volume_id, mask='mask[id,capacityGb,serviceResource[datacenter]]')
         snapshotSpaceOrder = {
-                            'complexType':'SoftLayer_Container_Product_Order_Network_Storage_Iscsi_SnapshotSpace',
-                            'location': result['serviceResource']['datacenter']['id'],
-                            'packageId': 0,
-                            'prices': [{'id': item_price[0]}],
-                            'quantity': 1,
-                            'volumeId': volume_id}
+            'complexType':
+            'SoftLayer_Container_Product_Order_Network_Storage_Iscsi_SnapshotSpace',
+            'location': result['serviceResource']['datacenter']['id'],
+            'packageId': 0,
+            'prices': [{'id': item_price[0]}],
+            'quantity': 1,
+            'volumeId': volume_id}
         self.product_order.verifyOrder(snapshotSpaceOrder)
         self.product_order.placeOrder(snapshotSpaceOrder)
 
@@ -139,4 +142,4 @@ class ISCSIManager(IdentifierMixin, object):
         :params: imteger volume_id: the volume ID
         :params: integer snapshot_id: the snapshot ID
         """
-        self.iscsi.restoreFromSnapshot(snapshot_id, id = volume_id)
+        self.iscsi.restoreFromSnapshot(snapshot_id, id=volume_id)

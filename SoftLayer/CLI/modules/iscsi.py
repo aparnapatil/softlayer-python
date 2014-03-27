@@ -15,14 +15,9 @@ The available commands are:
   list_snapshots       List Snapshots of given iscsi
 
 """
-from SoftLayer.utils import lookup
-from SoftLayer.CLI import (
-    CLIRunnable, Table, no_going_back, confirm, mb_to_gb, listing,
-    FormattedItem)
+from SoftLayer.CLI import (CLIRunnable, Table, no_going_back, FormattedItem)
 from SoftLayer.CLI.helpers import (
-    CLIAbort, ArgumentError, NestedDict, blank, resolve_id, KeyValueTable,
-    update_with_template_args, FALSE_VALUES, export_to_template,
-    active_txn, transaction_status)
+    CLIAbort, ArgumentError, NestedDict, blank, resolve_id, KeyValueTable)
 from SoftLayer import ISCSIManager
 
 
@@ -70,12 +65,12 @@ class CreateiSCSI(CLIRunnable):
     """
     usage: sl iscsi create --size=SIZE --dc=DC [options]
 
-Order/create an iSCSI storage.
+    Order/create an iSCSI storage.
 
-Required:
- --size=SIZE  Size
- --dc=DC   Datacenter
-"""
+    Required:
+     --size=SIZE  Size
+     --dc=DC   Datacenter
+    """
     action = 'create'
     options = ['confirm']
     required_params = ['--size', '--dc']
@@ -84,15 +79,15 @@ Required:
         iscsi = ISCSIManager(self.client)
 
         self._validate_create_args(args)
-	order = {
-	'size':int(args['--size']),
-	}
-	location = self._get_location_id(args['--dc'])
-	order['dc'] = location
-	iscsi.order_iscsi(**order)
+        order = {
+            'size': int(args['--size']),
+        }
+        location = self._get_location_id(args['--dc'])
+        order['dc'] = location
+        iscsi.order_iscsi(**order)
 
     def _validate_create_args(self, args):
-	invalid_args = [k for k in self.required_params if args.get(k) is None]
+        invalid_args = [k for k in self.required_params if args.get(k) is None]
         if invalid_args:
             raise ArgumentError('Missing required options: %s'
                                 % ','.join(invalid_args))
@@ -110,7 +105,8 @@ Required:
             if dc['name'] == location:
                 self.location = dc['id']
                 return self.location
-	raise ArgumentError('Invalid datacenter name: %s'%location)
+        raise ArgumentError('Invalid datacenter name: %s' % location)
+
 
 class CanceliSCSI(CLIRunnable):
 
@@ -177,9 +173,11 @@ Options:
         t.add_row(['nasType', result['nasType']])
         t.add_row(['capacityGb', result['capacityGb']])
         if result['snapshotCapacityGb']:
-        	t.add_row(['snapshotCapacityGb', result['snapshotCapacityGb']])
-	t.add_row(['mountableFlag', result['mountableFlag']])
-        t.add_row(['serviceResourceBackendIpAddress', result['serviceResourceBackendIpAddress']])
+            t.add_row(['snapshotCapacityGb', result['snapshotCapacityGb']])
+        t.add_row(['mountableFlag', result['mountableFlag']])
+        t.add_row(
+            ['serviceResourceBackendIpAddress',
+             result['serviceResourceBackendIpAddress']])
         t.add_row(['price', result['billingItem']['recurringFee']])
         t.add_row(['BillingItemId', result['billingItem']['id']])
         if result.get('notes'):
@@ -211,7 +209,7 @@ Options:
         iscsi_id = resolve_id(iscsi.resolve_ids,
                               args.get('<identifier>'),
                               'iSCSI')
-	notes = args.get('--notes')
+        notes = args.get('--notes')
         iscsi.create_snapshot(iscsi_id, notes)
 
 
@@ -231,7 +229,7 @@ Required :
 
     def execute(self, args):
         iscsi = ISCSIManager(self.client)
-	invalid_args = [k for k in self.required_params if args.get(k) is None]
+        invalid_args = [k for k in self.required_params if args.get(k) is None]
         if invalid_args:
             raise ArgumentError('Missing required options: %s'
                                 % ','.join(invalid_args))
@@ -241,6 +239,7 @@ Required :
             'iSCSI')
         capacity = args.get('--capacity')
         iscsi.order_snapshot_space(iscsi_id, capacity)
+
 
 class IscsiDeleteSnapshot(CLIRunnable):
 
@@ -273,9 +272,12 @@ restores volume from existing snapshot.
 
     def execute(self, args):
         iscsi = ISCSIManager(self.client)
-        volume_id = resolve_id(iscsi.resolve_ids,args.get('<volume_identifier>'),'iSCSI')
-        snapshot_id = resolve_id(iscsi.resolve_ids,args.get('<snapshot_identifier>'),'Snapshot')
+        volume_id = resolve_id(
+            iscsi.resolve_ids, args.get('<volume_identifier>'), 'iSCSI')
+        snapshot_id = resolve_id(
+            iscsi.resolve_ids, args.get('<snapshot_identifier>'), 'Snapshot')
         iscsi.restore_from_snapshot(volume_id, snapshot_id)
+
 
 class ListISCSISnapshots(CLIRunnable):
 
@@ -288,24 +290,25 @@ List iSCSI Snapshots
 
     def execute(self, args):
         mgr = ISCSIManager(self.client)
-        iscsi_id = resolve_id(mgr.resolve_ids,args.get('<identifier>'),'iSCSI')
-	iscsi = self.client['Network_Storage_Iscsi']
-        snapshots = iscsi.getPartnerships(mask='volumeId,partnerVolumeId,createDate,type', id = iscsi_id)
+        iscsi_id = resolve_id(
+            mgr.resolve_ids, args.get('<identifier>'), 'iSCSI')
+        iscsi = self.client['Network_Storage_Iscsi']
+        snapshots = iscsi.getPartnerships(
+            mask='volumeId,partnerVolumeId,createDate,type', id=iscsi_id)
         snapshots = [NestedDict(n) for n in snapshots]
 
         t = Table([
             'id',
             'createDate',
             'name',
-	    'description',
+            'description',
         ])
-	
+
         for n in snapshots:
             t.add_row([
                 n['partnerVolumeId'],
-		n['createDate'],
-		n['type']['name'],
-	    	n['type']['description'],
-		])
-	return t
-	
+                n['createDate'],
+                n['type']['name'],
+                n['type']['description'],
+            ])
+        return t
