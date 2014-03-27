@@ -87,6 +87,8 @@ class ISCSIManager(IdentifierMixin, object):
 
     def cancel_iscsi(self, volume_id, reason='unNeeded', immediate=False):
         """Cancels the given iSCSI volume.
+
+        :param integer volume_id: the volume ID
         """
         iscsi = self.get_iscsi(
             volume_id,
@@ -100,12 +102,17 @@ class ISCSIManager(IdentifierMixin, object):
 
     def create_snapshot(self, volume_id, notes='unNeeded'):
         """ Orders a snapshot for given volume
+
+        :param integer volume_id: the volume ID
         """
 
         self.iscsi.createSnapshot(notes, id=volume_id)
 
     def order_snapshot_space(self, volume_id, capacity):
         """ Orders a snapshot space for given volume
+
+        :param integer volume_id: the volume ID
+        :param integer capacity: capacity in ~GB
         """
         item_price = self._find_item_prices(int(capacity),'~iSCSI SAN Snapshot Space')
         result = self.get_iscsi(volume_id, mask='mask[id,capacityGb,serviceResource[datacenter]]')

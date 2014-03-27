@@ -81,8 +81,6 @@ Required:
     required_params = ['--size', '--dc']
 
     def execute(self, args):
-	import pdb
-	pdb.set_trace()
         iscsi = ISCSIManager(self.client)
 
         self._validate_create_args(args)
@@ -131,8 +129,6 @@ options :
     options = ['confirm']
 
     def execute(self, args):
-	import pdb
-	pdb.set_trace()
         iscsi = ISCSIManager(self.client)
         iscsi_id = resolve_id(
             iscsi.resolve_ids,
@@ -211,8 +207,6 @@ Options:
     action = 'create_snapshot'
 
     def execute(self, args):
-	import pdb
-	pdb.set_trace()
         iscsi = ISCSIManager(self.client)
         iscsi_id = resolve_id(iscsi.resolve_ids,
                               args.get('<identifier>'),
@@ -236,8 +230,6 @@ Required :
     required_params = ['--capacity']
 
     def execute(self, args):
-        import pdb
-        pdb.set_trace()
         iscsi = ISCSIManager(self.client)
 	invalid_args = [k for k in self.required_params if args.get(k) is None]
         if invalid_args:

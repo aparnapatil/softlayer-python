@@ -33,7 +33,6 @@ class ISCSITests(unittest.TestCase):
 	result = self.iscsi.cancel_iscsi(iscsi_id)
 	f = self.client['Billing_Item'].cancelItem
 	f.assert_called_once_with(False,True,'unNeeded',id=iscsi_id)
-	#self.assertEqual(result,Billing_Item.cancelItem)
 
     def test_cancel_iscsi_with_reason(self):
 	iscsi_id=6327
@@ -41,7 +40,6 @@ class ISCSITests(unittest.TestCase):
 	result = self.iscsi.cancel_iscsi(iscsi_id,reason)
 	f = self.client['Billing_Item'].cancelItem
         f.assert_called_once_with(False,True,reason,id=iscsi_id)
-        #self.assertEqual(result,Billing_Item.cancelItem)
 
     def test_order_iscsi_without_recurringFee(self):
 	self.iscsi.order_iscsi(test=1, verify=1)
@@ -52,15 +50,6 @@ class ISCSITests(unittest.TestCase):
                                     'packageId': 0, 
                                     'complexType': 'SoftLayer_Container_Product_Order_Network_Storage_Iscsi'})
 
-    """def test_order_iscsi_with_recurringFee(self):
-        self.iscsi.order_iscsi(test=1, verify=1)
-        f = self.client['Product_Order'].placeOrder
-        f.assert_called_once_with({'prices': [{'id': 22441}],
-                                    'quantity': 1,
-                                    'location': None,
-                                    'packageId': 0,
-                                   'complexType': 'SoftLayer_Container_Product_Order_Network_Storage_Iscsi'})"""
-	   
     def test_delete_snapshot(self):
         self.iscsi.delete_snapshot(1)
         self.client['Network_Storage_Iscsi'].deleteObject.assert_called_once_with(id=1) 
