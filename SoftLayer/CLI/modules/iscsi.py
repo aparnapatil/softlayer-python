@@ -81,6 +81,8 @@ Required:
     required_params = ['--size', '--dc']
 
     def execute(self, args):
+	import pdb
+	pdb.set_trace()
         iscsi = ISCSIManager(self.client)
 
         self._validate_create_args(args)
@@ -129,6 +131,8 @@ options :
     options = ['confirm']
 
     def execute(self, args):
+	import pdb
+	pdb.set_trace()
         iscsi = ISCSIManager(self.client)
         iscsi_id = resolve_id(
             iscsi.resolve_ids,
@@ -200,32 +204,40 @@ usage: sl iscsi create_snapshot <identifier> [options]
 
 create an iSCSI snapshot.
 
+Options:
+--notes=NOTE    An optional note
+
 """
     action = 'create_snapshot'
 
     def execute(self, args):
+	import pdb
+	pdb.set_trace()
         iscsi = ISCSIManager(self.client)
         iscsi_id = resolve_id(iscsi.resolve_ids,
                               args.get('<identifier>'),
                               'iSCSI')
-        iscsi.create_snapshot(iscsi_id)
+	notes = args.get('--notes')
+        iscsi.create_snapshot(iscsi_id, notes)
 
 
 class OrderIscsiSpace(CLIRunnable):
 
     """
-usage: sl iscsi order_snapshot_space [--capacity=Capacity...] [options]
+usage: sl iscsi order_snapshot_space <identifier> [options]
 
 Order iSCSI snapshot space.
 
 Required :
---capacity = Snapshot Capacity
+--capacity=Capacity Snapshot Capacity
 """
 
     action = 'order_snapshot_space'
     required_params = ['--capacity']
 
     def execute(self, args):
+        import pdb
+        pdb.set_trace()
         iscsi = ISCSIManager(self.client)
 	invalid_args = [k for k in self.required_params if args.get(k) is None]
         if invalid_args:
@@ -235,20 +247,8 @@ Required :
             iscsi.resolve_ids,
             args.get('<identifier>'),
             'iSCSI')
-        item_price = iscsi.find_space(int(args['--capacity'][0]))
-        result = iscsi.get_iscsi(
-            iscsi_id,
-            mask='mask[id,capacityGb,serviceResource[datacenter]]')
-        snapshotSpaceOrder = {
-            'complexType':
-            'SoftLayer_Container_Product_Order_Network_Storage_Iscsi_SnapshotSpace',
-            'location': result['serviceResource']['datacenter']['id'],
-            'packageId': 0,
-            'prices': [{'id': item_price}],
-            'quantity': 1,
-            'volumeId': iscsi_id}
-        iscsi.Order_snapshot_space(**snapshotSpaceOrder)
-
+        capacity = args.get('--capacity')
+        iscsi.order_snapshot_space(iscsi_id, capacity)
 
 class IscsiDeleteSnapshot(CLIRunnable):
 
@@ -272,7 +272,7 @@ Delete iSCSI snapshot.
 class RestoreVolumefromSnapshot(CLIRunnable):
 
     """
-usage: sl iscsi restore_volume <identifier>
+usage: sl iscsi restore_volume <volume_identifier> <snapshot_identifier>
 
 restores volume from existing snapshot.
 
@@ -281,12 +281,8 @@ restores volume from existing snapshot.
 
     def execute(self, args):
         iscsi = ISCSIManager(self.client)
-        snapshot_id = resolve_id(
-            iscsi.resolve_ids,
-            args.get('<identifier>'),
-            'Snapshot')
-	result = iscsi.get_iscsi(snapshot_id,mask='mask[parentPartnerships.volumeId]')
-	volume_id = result['parentPartnerships'][0]['volumeId']
+        volume_id = resolve_id(iscsi.resolve_ids,args.get('<volume_identifier>'),'iSCSI')
+        snapshot_id = resolve_id(iscsi.resolve_ids,args.get('<snapshot_identifier>'),'Snapshot')
         iscsi.restore_from_snapshot(volume_id, snapshot_id)
 
 class ListISCSISnapshots(CLIRunnable):

@@ -43,11 +43,50 @@ class ISCSITests(unittest.TestCase):
         f.assert_called_once_with(False,True,reason,id=iscsi_id)
         #self.assertEqual(result,Billing_Item.cancelItem)
 
-    #@patch('SoftLayer.managers.iscsi.ISCSIManager.build_order')
-    def test_order_iscsi(self):
-	#create_dict.return_value = {'test': 1, 'verify': 1}
+    def test_order_iscsi_without_recurringFee(self):
 	self.iscsi.order_iscsi(test=1, verify=1)
-	#create_dict.assert_called_once_with(test=1, verify=1)
 	f = self.client['Product_Order'].placeOrder
-        f.assert_called_once_with({'test': 1, 'verify': 1})
-	    
+        f.assert_called_once_with({'prices': [{'id': 22441}], 
+                                    'quantity': 1,
+                                    'location': None, 
+                                    'packageId': 0, 
+                                    'complexType': 'SoftLayer_Container_Product_Order_Network_Storage_Iscsi'})
+
+    """def test_order_iscsi_with_recurringFee(self):
+        self.iscsi.order_iscsi(test=1, verify=1)
+        f = self.client['Product_Order'].placeOrder
+        f.assert_called_once_with({'prices': [{'id': 22441}],
+                                    'quantity': 1,
+                                    'location': None,
+                                    'packageId': 0,
+                                   'complexType': 'SoftLayer_Container_Product_Order_Network_Storage_Iscsi'})"""
+	   
+    def test_delete_snapshot(self):
+        self.iscsi.delete_snapshot(1)
+        self.client['Network_Storage_Iscsi'].deleteObject.assert_called_once_with(id=1) 
+
+    def test_create_snapshot(self):
+        iscsi_id = 100
+	result = self.iscsi.create_snapshot(iscsi_id, 'unNeeded')
+	f = self.client['Network_Storage_Iscsi'].createSnapshot
+	f.assert_called_once_with('unNeeded', id=iscsi_id)
+
+    def test_order_snapshot_space(self):
+        iscsi_id = 100
+        capacity = 20
+        result = self.iscsi.order_snapshot_space(iscsi_id,capacity)
+        f = self.client['Product_Order'].placeOrder
+        f.assert_called_once_with({'volumeId': 100, 
+            'location': 138124, 
+            'packageId': 0, 
+            'complexType': 'SoftLayer_Container_Product_Order_Network_Storage_Iscsi_SnapshotSpace', 
+            'prices': [{'id': 22501}], 
+            'quantity': 1
+            })
+
+    def test_restore_from_snapshot(self):
+        volume_id = 100
+        snapshot_id = 101
+        result = self.iscsi.restore_from_snapshot(volume_id,snapshot_id)
+        f = self.client['Network_Storage_Iscsi'].restoreFromSnapshot
+        f.assert_called_once_with(101, id=100)

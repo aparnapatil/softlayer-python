@@ -17,14 +17,14 @@ class ISCSIManager(IdentifierMixin, object):
         self.product_order = self.client['Product_Order']
         self.account = self.client['Account']
 
-    def _find_item_prices(self, size):
+    def _find_item_prices(self, size, query):
         item_prices = []
         _filter = NestedDict({})
-        _filter[
+	_filter[
             'itemPrices'][
             'item'][
             'description'] = query_filter(
-            '~GB iSCSI SAN Storage')
+            query)
         _filter['itemPrices']['item']['capacity'] = query_filter('%s' % size)
         iscsi_item_prices = self.client['Product_Package'].getItemPrices(
             id=0,
@@ -36,32 +36,13 @@ class ISCSIManager(IdentifierMixin, object):
             item_prices.append(price['id'])
         return item_prices
 
-    def find_space(self, size):
-        _filter = NestedDict({})
-        _filter[
-            'itemPrices'][
-            'item'][
-            'description'] = query_filter(
-            '~iSCSI SAN Snapshot Space')
-        _filter['itemPrices']['item']['capacity'] = query_filter('>=%s' % size)
-        item_prices = self.client['Product_Package'].getItemPrices(
-            id=0,
-            mask='mask[id,item[capacity]]',
-            filter=_filter.to_dict())
-        item_prices = sorted(
-            item_prices,
-            key=lambda x: int(x['item']['capacity']))
-        if len(item_prices) == 0:
-            return None
-        return item_prices[0]['id']
-
-    def build_order(self, price, dc):
+    def build_order(self, item_price, dc):
         order = {
             'complexType':
             'SoftLayer_Container_Product_Order_Network_Storage_Iscsi',
             'location': dc,
             'packageId': 0,  # storage package
-            'prices': [{'id': price}],
+            'prices': [{'id': item_price[-1]}],
             'quantity': 1
         }
         return order
@@ -72,15 +53,10 @@ class ISCSIManager(IdentifierMixin, object):
         """
 	size = kwargs.get('size')
 	dc = kwargs.get('dc')
-	item_prices = self._find_item_prices(size)
-        for price in item_prices:
-            iscsi_order = self.build_order(price, dc)
-            try:
-                self.product_order.verifyOrder(iscsi_order)
-                order = self.product_order.placeOrder(iscsi_order)
-            except Exception as e:
-                continue   # if verifyOrder() fails for perticular item-price-id
-            return
+	item_price = self._find_item_prices(size,'~GB iSCSI SAN Storage')
+        iscsi_order = self.build_order(item_price, dc)
+        self.product_order.verifyOrder(iscsi_order)
+        self.product_order.placeOrder(iscsi_order)
 
     def get_iscsi(self, volume_id, **kwargs):
         """ Get details about a iSCSI storage
@@ -122,18 +98,26 @@ class ISCSIManager(IdentifierMixin, object):
             reason,
             id=billingItemId)
 
-    def create_snapshot(self, volume_id):
+    def create_snapshot(self, volume_id, notes='unNeeded'):
         """ Orders a snapshot for given volume
         """
 
-        self.iscsi.createSnapshot('', id=volume_id)
+        self.iscsi.createSnapshot(notes, id=volume_id)
 
-    def Order_snapshot_space(self, **snapshotSpaceOrder):
+    def order_snapshot_space(self, volume_id, capacity):
         """ Orders a snapshot space for given volume
         """
-
+        item_price = self._find_item_prices(int(capacity),'~iSCSI SAN Snapshot Space')
+        result = self.get_iscsi(volume_id, mask='mask[id,capacityGb,serviceResource[datacenter]]')
+        snapshotSpaceOrder = {
+                            'complexType':'SoftLayer_Container_Product_Order_Network_Storage_Iscsi_SnapshotSpace',
+                            'location': result['serviceResource']['datacenter']['id'],
+                            'packageId': 0,
+                            'prices': [{'id': item_price[0]}],
+                            'quantity': 1,
+                            'volumeId': volume_id}
         self.product_order.verifyOrder(snapshotSpaceOrder)
-        order = self.product_order.placeOrder(snapshotSpaceOrder)
+        self.product_order.placeOrder(snapshotSpaceOrder)
 
     def delete_snapshot(self, snapshot_id):
         """ Deletes the snapshot
@@ -145,7 +129,7 @@ class ISCSIManager(IdentifierMixin, object):
 
     def restore_from_snapshot(self, volume_id, snapshot_id):
         """ Restore the volume to snapshot's contents
-
+        :params: imteger volume_id: the volume ID
         :params: integer snapshot_id: the snapshot ID
         """
         self.iscsi.restoreFromSnapshot(snapshot_id, id = volume_id)
