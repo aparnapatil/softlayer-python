@@ -120,8 +120,8 @@ class ISCSIManager(IdentifierMixin, object):
             volume_id, mask='mask[id,capacityGb,serviceResource[datacenter]]')
         snapshotSpaceOrder = {
             'complexType':
-            '''SoftLayer_Container_Product_Order_
-Network_Storage_Iscsi_SnapshotSpace''',
+            'SoftLayer_Container_Product_Order_\
+Network_Storage_Iscsi_SnapshotSpace',
             'location': result['serviceResource']['datacenter']['id'],
             'packageId': 0,
             'prices': [{'id': item_price[0]}],

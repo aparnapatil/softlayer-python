@@ -73,8 +73,8 @@ class ISCSITests(unittest.TestCase):
              'location': 138124,
              'packageId': 0,
              'complexType':
-             '''SoftLayer_Container_
-Product_Order_Network_Storage_Iscsi_SnapshotSpace''',
+             'SoftLayer_Container_\
+Product_Order_Network_Storage_Iscsi_SnapshotSpace',
              'prices': [{'id': 22501}],
              'quantity': 1
              })
